@@ -9,6 +9,7 @@ import { fileURLToPath } from 'url';
 import User from './models/User.js';
 import Product from './models/Product.js';
 import Rating from './models/Rating.js';
+import Task from './models/Task.js';
 import DailyTaskSession from './models/DailyTaskSession.js';
 import Transaction from './models/Transaction.js';
 import Withdrawal from './models/Withdrawal.js';
@@ -614,6 +615,41 @@ app.get('/api/admin/tasks', authenticateToken, async (req, res) => {
   }
 });
 
+// Admin routes for user tasks
+app.get('/api/admin/user-tasks', authenticateToken, async (req, res) => {
+  try {
+    const { page = 1, limit = 50, userId, taskType, status } = req.query;
+
+    let query = {};
+    if (userId) query.userId = userId;
+    if (taskType) query.taskType = taskType;
+    if (status) query.status = status;
+
+    const tasks = await Task.find(query)
+      .populate('userId', 'username email')
+      .populate('productId', 'name price image category')
+      .populate('sessionId', 'status rewardEarned luckyOrderTriggered')
+      .sort({ createdAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const totalTasks = await Task.countDocuments(query);
+
+    res.json({
+      tasks,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: totalTasks,
+        pages: Math.ceil(totalTasks / parseInt(limit))
+      }
+    });
+  } catch (error) {
+    console.error('Get admin user tasks error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // User-specific task routes
 app.get('/api/user/tasks', authenticateToken, async (req, res) => {
   try {
@@ -1215,6 +1251,20 @@ app.post('/api/ratings', authenticateToken, async (req, res) => {
 
     await ratingRecord.save();
 
+    // Create task record for tracking task money
+    const taskRecord = new Task({
+      userId,
+      productId,
+      taskType: 'rating',
+      reward: product.reward,
+      productPrice: product.price,
+      profit,
+      status: 'completed',
+      description: `Rating task completed for ${product.name}`
+    });
+
+    await taskRecord.save();
+
     res.json({
       message: 'Rating submitted successfully',
       rating: ratingRecord,
@@ -1293,6 +1343,22 @@ app.get('/api/ratings/my', authenticateToken, async (req, res) => {
     res.json({ ratings });
   } catch (error) {
     console.error('Get user ratings error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user tasks
+app.get('/api/tasks/my', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const tasks = await Task.find({ userId })
+      .populate('productId', 'name price image category')
+      .populate('sessionId', 'status rewardEarned luckyOrderTriggered')
+      .sort({ createdAt: -1 });
+
+    res.json({ tasks });
+  } catch (error) {
+    console.error('Get user tasks error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1538,14 +1604,20 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    // Check if user already rated this product today
+    // Check if user already rated this product today (either Rating or Task record)
     const existingRating = await Rating.findOne({
       userId,
       productId,
       createdAt: { $gte: today, $lt: tomorrow }
     });
 
-    if (existingRating) {
+    const existingTask = await Task.findOne({
+      userId,
+      productId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    if (existingRating || existingTask) {
       return res.status(400).json({ message: 'Product already rated today' });
     }
 
@@ -1554,7 +1626,7 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
     const currentProductIndex = allProducts.findIndex(p => p._id.toString() === productId);
 
     if (currentProductIndex > 0) {
-      // Check if all previous products have been rated today
+      // Check if all previous products have been rated today (either Rating or Task record)
       for (let i = 0; i < currentProductIndex; i++) {
         const prevProduct = allProducts[i];
         const prevRating = await Rating.findOne({
@@ -1563,7 +1635,13 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
           createdAt: { $gte: today, $lt: tomorrow }
         });
 
-        if (!prevRating) {
+        const prevTask = await Task.findOne({
+          userId,
+          productId: prevProduct._id,
+          createdAt: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!prevRating && !prevTask) {
           return res.status(400).json({
             message: `You must rate "${prevProduct.name}" before rating this product. Please complete products in order.`
           });
@@ -1574,12 +1652,20 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
     // Calculate profit
     const profit = product.reward - product.price;
 
-    // Check for lucky order (random 10% chance, but exclude first product)
-    // Get all products to check if this is the first product
-    const allProductsSorted = await Product.find({ isActive: true }).sort({ createdAt: -1 });
-    const isFirstProduct = allProductsSorted.length > 0 && allProductsSorted[0]._id.toString() === productId;
+    // Increment task completion count
+    session.tasksCompleted += 1;
 
-    if (!isFirstProduct && Math.random() < 0.10) {
+    // Check for lucky order - only after completing 3 products
+    // Count how many tasks the user has completed today in this session
+    const todayTasks = await Task.find({
+      userId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    const tasksCompletedToday = todayTasks.length;
+
+    // Lucky order only available after completing 3 products (so on the 4th, 5th, etc.)
+    if (tasksCompletedToday >= 3 && Math.random() < 0.10) {
       session.luckyOrderTriggered = true;
       session.luckyOrderCommission = profit * 0.0005; // 0.05% commission
     }
@@ -1589,22 +1675,22 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
       session.status = 'completed';
       session.completedAt = new Date();
       session.rewardEarned = session.tasksCompleted * 36.00; // $36 per task
-      
+
       // Complete daily session and get updated user data
       const completedSessionData = await user.completeDailySession();
-      
+
       // Handle reward distribution based on session type
       if (session.parentUserId) {
         // This is a child session - distribute rewards to parent
         const parent = await User.findById(session.parentUserId);
         const childReward = 20.00; // $20 to child
-        
+
         session.childRewardSent = childReward;
-        
+
         // Transfer reward to child
         user.balance = completedSessionData.balance + childReward;
         user.totalEarningsToday = completedSessionData.totalEarningsToday + childReward;
-        
+
         // Create transaction record
         const transaction = new Transaction({
           fromUserId: session.parentUserId,
@@ -1614,12 +1700,12 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
           amount: childReward,
           description: 'Daily task completion reward from parent'
         });
-        
+
         await transaction.save();
       } else {
         // This is a parent session
         session.rewardDistributed = session.rewardEarned;
-        
+
         // If this is the first session, send $20 to each child
         if (session.isFirstSession) {
           for (const childId of user.childUsers) {
@@ -1627,7 +1713,7 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
             if (child) {
               child.balance += 20.00;
               child.totalEarningsToday += 20.00;
-              
+
               const transaction = new Transaction({
                 fromUserId: userId,
                 toUserId: childId,
@@ -1636,18 +1722,18 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
                 amount: 20.00,
                 description: 'First session reward from parent'
               });
-              
+
               await transaction.save();
               await child.save();
             }
           }
         }
-        
+
         // Update user balance for completed parent session
         user.balance = completedSessionData.balance;
         user.totalEarningsToday = completedSessionData.totalEarningsToday;
       }
-      
+
       // Handle lucky order commission
       if (session.luckyOrderTriggered) {
         const commission = session.luckyOrderCommission;
@@ -1655,7 +1741,7 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
         user.totalEarningsToday += commission;
         user.addLuckyOrder();
         user.addCommission(commission);
-        
+
         const transaction = new Transaction({
           fromUserId: userId,
           toUserId: userId,
@@ -1665,13 +1751,30 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
           commissionAmount: commission,
           description: 'Lucky order commission reward'
         });
-        
+
         await transaction.save();
       }
-      
+
       // Final save with all updates
       await user.save();
     }
+
+    // Create task record for session task completion
+    const taskRecord = new Task({
+      userId,
+      productId,
+      sessionId: session._id,
+      taskType: 'session_task',
+      reward: product.reward,
+      productPrice: product.price,
+      profit,
+      commission: session.luckyOrderTriggered ? session.luckyOrderCommission : 0,
+      status: 'completed',
+      isLuckyOrder: session.luckyOrderTriggered,
+      description: `Session task completed for ${product.name}${session.luckyOrderTriggered ? ' (Lucky Order)' : ''}`
+    });
+
+    await taskRecord.save();
 
     await session.save();
 
@@ -1732,14 +1835,20 @@ app.post('/api/daily-session/check-sequential', authenticateToken, async (req, r
       });
     }
 
-    // Check if user already rated this product today
+    // Check if user already rated this product today (either Rating or Task record)
     const existingRating = await Rating.findOne({
       userId,
       productId,
       createdAt: { $gte: today, $lt: tomorrow }
     });
 
-    if (existingRating) {
+    const existingTask = await Task.findOne({
+      userId,
+      productId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    if (existingRating || existingTask) {
       return res.json({
         canRate: false,
         message: 'You have already rated this product today. Please complete products in order.'
@@ -1751,7 +1860,7 @@ app.post('/api/daily-session/check-sequential', authenticateToken, async (req, r
     const currentProductIndex = allProducts.findIndex(p => p._id.toString() === productId);
 
     if (currentProductIndex > 0) {
-      // Check if all previous products have been rated today
+      // Check if all previous products have been rated today (either Rating or Task record)
       for (let i = 0; i < currentProductIndex; i++) {
         const prevProduct = allProducts[i];
         const prevRating = await Rating.findOne({
@@ -1760,7 +1869,13 @@ app.post('/api/daily-session/check-sequential', authenticateToken, async (req, r
           createdAt: { $gte: today, $lt: tomorrow }
         });
 
-        if (!prevRating) {
+        const prevTask = await Task.findOne({
+          userId,
+          productId: prevProduct._id,
+          createdAt: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!prevRating && !prevTask) {
           return res.json({
             canRate: false,
             message: `You must rate "${prevProduct.name}" before rating this product. Please complete products in order.`

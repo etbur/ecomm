@@ -62,7 +62,7 @@ const Home = () => {
 
       // Load products
       const productsData = await productsApi.getAll();
-      setProducts(productsData.products);
+      setProducts(productsData.products.sort((a, b) => a._id.localeCompare(b._id)));
 
     } catch (error) {
       console.error('Load initial data error:', error);
@@ -774,7 +774,6 @@ const Home = () => {
                   <span className="profit">${((selectedProduct?.reward || 0) - (selectedProduct?.price || 0)).toFixed(2)}</span>
                 </div>
               </div>
-
               <div className="benefits-list">
                 <h4>Benefits of Lucky Order:</h4>
                 <ul>

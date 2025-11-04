@@ -3,6 +3,7 @@ import AdminLayout from './components/AdminLayout'
 import AdminHome from './components/AdminHome'
 import AdminUsers from './components/AdminUsers'
 import AdminTasks from './components/AdminTasks'
+import AdminUserTasks from './components/AdminUserTasks'
 import AdminTransactions from './components/AdminTransactions'
 import AdminVoucher from './components/AdminVoucher'
 import AdminWithdraw from './components/AdminWithdraw'
@@ -32,6 +33,8 @@ function App() {
         return <AdminUsers />
       case 'admin-tasks':
         return <AdminTasks />
+      case 'admin-user-tasks':
+        return <AdminUserTasks />
       case 'admin-transactions':
         return <AdminTransactions />
       case 'admin-voucher':

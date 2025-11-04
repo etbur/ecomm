@@ -21,6 +21,12 @@ const AdminSidebar = ({ activePage, setActivePage, collapsed, isMobile, sidebarO
       path: 'admin-tasks'
     },
     {
+      id: 'admin-user-tasks',
+      label: 'User Tasks',
+      icon: 'fas fa-check-circle',
+      path: 'admin-user-tasks'
+    },
+    {
       id: 'admin-transactions',
       label: 'Transactions',
       icon: 'fas fa-exchange-alt',
@@ -61,11 +67,7 @@ const AdminSidebar = ({ activePage, setActivePage, collapsed, isMobile, sidebarO
 
   return (
     <aside className={`admin-sidebar ${collapsed && !isMobile ? 'collapsed' : ''} ${isMobile ? (sidebarOpen ? 'mobile-open' : 'mobile-closed') : ''}`}>
-      <div className="sidebar-header">
-        {!collapsed && <h2>Admin Panel</h2>}
-        {collapsed && <i className="fas fa-crown"></i>}
-      </div>
-
+    
       <nav className="sidebar-nav">
         <ul className="sidebar-menu">
           {menuItems.map((item) => (

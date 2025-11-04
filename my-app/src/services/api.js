@@ -54,6 +54,11 @@ export const ratingsApi = {
   getMyRatings: () => makeRequest('/ratings/my'),
 };
 
+// Tasks API
+export const tasksApi = {
+  getMyTasks: () => makeRequest('/tasks/my'),
+};
+
 // User API
 export const userApi = {
   getBalance: () => makeRequest('/user/balance'),
