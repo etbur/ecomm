@@ -14,6 +14,7 @@ import DailyTaskSession from './models/DailyTaskSession.js';
 import Transaction from './models/Transaction.js';
 import Withdrawal from './models/Withdrawal.js';
 import Deposit from './models/Deposit.js';
+import Voucher from './models/Voucher.js';
 
 dotenv.config();
 
@@ -1462,19 +1463,28 @@ app.get('/api/user/deposits', authenticateToken, async (req, res) => {
 // PARENT-CHILD DAILY TASK REWARD SYSTEM
 // ====================
 
+// Helper function to find user by ID or referral code
+const findUserByIdOrReferralCode = async (identifier) => {
+  // First try to find by ObjectId
+  if (identifier.match(/^[0-9a-fA-F]{24}$/)) {
+    const user = await User.findById(identifier);
+    if (user) return user;
+  }
+
+  // If not found or not a valid ObjectId, try to find by referral code
+  const user = await User.findOne({ referralCode: identifier });
+  return user;
+};
+
 // Create Parent-Child relationship
 app.post('/api/users/create-parent-child', authenticateToken, async (req, res) => {
   try {
     const { parentUserId, childUserId } = req.body;
     const currentUserId = req.user.userId;
 
-    // Only allow users to create relationships they're involved in
-    if (currentUserId !== parentUserId && currentUserId !== childUserId) {
-      return res.status(403).json({ message: 'Not authorized to create this relationship' });
-    }
-
-    const parentUser = await User.findById(parentUserId);
-    const childUser = await User.findById(childUserId);
+    // Find parent and child users by ID or referral code
+    const parentUser = await findUserByIdOrReferralCode(parentUserId);
+    const childUser = await findUserByIdOrReferralCode(childUserId);
 
     if (!parentUser || !childUser) {
       return res.status(404).json({ message: 'User not found' });
@@ -1490,6 +1500,23 @@ app.post('/api/users/create-parent-child', authenticateToken, async (req, res) =
     childUser.userType = 'child';
     parentUser.userType = 'parent';
     parentUser.childUsers.push(childUserId);
+
+    // Add deposit balance to child user when relationship is created
+    if (parentUser.balance > 0) {
+      childUser.balance += parentUser.balance;
+
+      // Create transaction record for the balance transfer
+      const transaction = new Transaction({
+        fromUserId: parentUserId,
+        toUserId: childUserId,
+        type: 'parent_child_balance_transfer',
+        amount: parentUser.balance,
+        description: 'Balance transferred from parent when creating relationship',
+        status: 'completed'
+      });
+
+      await transaction.save();
+    }
 
     await childUser.save();
     await parentUser.save();
@@ -2518,6 +2545,259 @@ app.post('/api/user/withdrawals', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Withdrawal request error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// -----------------------
+// Voucher Routes
+// -----------------------
+
+// Generate voucher (admin only)
+app.post('/api/admin/vouchers', authenticateToken, async (req, res) => {
+  try {
+    const { userId, amount, type, generatedBy } = req.body;
+
+    if (!userId || !amount) {
+      return res.status(400).json({ message: 'User ID and amount are required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Generate unique voucher code
+    const code = `VOUCHER${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+
+    // Set expiration date (30 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const voucher = new Voucher({
+      userId,
+      amount: parseFloat(amount),
+      type: type || 'task_activation',
+      code,
+      generatedBy: generatedBy || 'admin',
+      expiresAt
+    });
+
+    await voucher.save();
+
+    // Populate user information
+    await voucher.populate('userId', 'username email');
+
+    res.status(201).json({
+      message: 'Voucher generated successfully',
+      voucher: {
+        _id: voucher._id,
+        code: voucher.code,
+        amount: voucher.amount,
+        type: voucher.type,
+        userId: voucher.userId,
+        status: voucher.status,
+        expiresAt: voucher.expiresAt,
+        createdAt: voucher.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Generate voucher error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get all vouchers (admin only)
+app.get('/api/admin/vouchers', authenticateToken, async (req, res) => {
+  try {
+    const vouchers = await Voucher.find({})
+      .populate({
+        path: 'userId',
+        select: 'username email',
+        model: 'User'
+      })
+      .sort({ createdAt: -1 });
+
+    res.json({ vouchers });
+  } catch (error) {
+    console.error('Get vouchers error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete voucher (admin only)
+app.delete('/api/admin/vouchers/:id', authenticateToken, async (req, res) => {
+  try {
+    const voucher = await Voucher.findByIdAndDelete(req.params.id);
+    if (!voucher) {
+      return res.status(404).json({ message: 'Voucher not found' });
+    }
+
+    res.json({ message: 'Voucher deleted successfully' });
+  } catch (error) {
+    console.error('Delete voucher error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Generate voucher (user)
+app.post('/api/user/vouchers/generate', authenticateToken, async (req, res) => {
+  try {
+    const { amount, type } = req.body;
+    const userId = req.user.userId;
+
+    if (!amount) {
+      return res.status(400).json({ message: 'Amount is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Check if user has enough balance to generate voucher
+    if (user.balance < parseFloat(amount)) {
+      return res.status(400).json({ message: 'Insufficient balance to generate voucher' });
+    }
+
+    // Generate unique voucher code
+    const code = `VOUCHER${Date.now().toString(36).toUpperCase()}${Math.random().toString(36).substring(2, 5).toUpperCase()}`;
+
+    // Set expiration date (30 days from now)
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 30);
+
+    const voucher = new Voucher({
+      userId,
+      amount: parseFloat(amount),
+      type: type || 'reward',
+      code,
+      generatedBy: 'user',
+      expiresAt
+    });
+
+    await voucher.save();
+
+    // Deduct amount from user balance
+    user.balance -= parseFloat(amount);
+    await user.save();
+
+    // Create transaction record for voucher generation
+    const transaction = new Transaction({
+      fromUserId: userId,
+      toUserId: userId,
+      type: 'voucher_generation',
+      amount: parseFloat(amount),
+      description: `Voucher generation: ${voucher.code}`,
+      voucherId: voucher._id
+    });
+
+    await transaction.save();
+
+    res.status(201).json({
+      message: 'Voucher generated successfully',
+      voucher: {
+        _id: voucher._id,
+        code: voucher.code,
+        amount: voucher.amount,
+        type: voucher.type,
+        expiresAt: voucher.expiresAt,
+        createdAt: voucher.createdAt
+      },
+      newBalance: user.balance
+    });
+  } catch (error) {
+    console.error('Generate voucher error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Redeem voucher (user) - Modified to give money to voucher owner
+app.post('/api/user/vouchers/redeem', authenticateToken, async (req, res) => {
+  try {
+    const { code } = req.body;
+    const redeemerId = req.user.userId;
+
+    if (!code) {
+      return res.status(400).json({ message: 'Voucher code is required' });
+    }
+
+    const voucher = await Voucher.findOne({ code: code.toUpperCase() });
+    if (!voucher) {
+      return res.status(404).json({ message: 'Invalid voucher code' });
+    }
+
+    if (voucher.status !== 'active') {
+      return res.status(400).json({ message: 'Voucher is not active' });
+    }
+
+    // Allow anyone to redeem the voucher (remove user ID check for sharing)
+    if (voucher.expiresAt < new Date()) {
+      voucher.status = 'expired';
+      await voucher.save();
+      return res.status(400).json({ message: 'Voucher has expired' });
+    }
+
+    const redeemer = await User.findById(redeemerId);
+    if (!redeemer) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Get the voucher owner (the user who generated it)
+    const voucherOwner = await User.findById(voucher.userId);
+    if (!voucherOwner) {
+      return res.status(404).json({ message: 'Voucher owner not found' });
+    }
+
+    // Update voucher status
+    voucher.status = 'used';
+    voucher.usedAt = new Date();
+    await voucher.save();
+
+    // Add amount to voucher owner's balance (not the redeemer)
+    voucherOwner.balance += voucher.amount;
+    await voucherOwner.save();
+
+    // Create transaction record - money goes to voucher owner
+    const transaction = new Transaction({
+      fromUserId: redeemerId, // Who redeemed it
+      toUserId: voucher.userId, // Who gets the money (voucher owner)
+      type: 'voucher_redemption',
+      amount: voucher.amount,
+      description: `Voucher redemption: ${voucher.code} - money sent to ${voucherOwner.username}`,
+      voucherId: voucher._id
+    });
+
+    await transaction.save();
+
+    res.json({
+      message: `Voucher redeemed successfully! $${voucher.amount.toFixed(2)} has been added to ${voucherOwner.username}'s account.`,
+      voucher: {
+        code: voucher.code,
+        amount: voucher.amount,
+        type: voucher.type,
+        owner: voucherOwner.username
+      },
+      redeemerBalance: redeemer.balance, // Redeemer's balance unchanged
+      ownerReceived: voucher.amount
+    });
+  } catch (error) {
+    console.error('Redeem voucher error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get user's vouchers
+app.get('/api/user/vouchers', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const vouchers = await Voucher.find({ userId })
+      .sort({ createdAt: -1 });
+
+    res.json({ vouchers });
+  } catch (error) {
+    console.error('Get user vouchers error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

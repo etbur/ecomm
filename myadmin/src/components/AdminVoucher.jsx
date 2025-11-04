@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import './AdminVoucher.css';
 
 const AdminVoucher = () => {
   const [users, setUsers] = useState([]);
@@ -258,54 +259,67 @@ const AdminVoucher = () => {
         </div>
       )}
 
-      {/* Vouchers Grid */}
+      {/* Vouchers Table */}
       {!loading && !error && (
-        <div className="vouchers-grid">
-          {generatedVouchers.map((voucher) => (
-            <div key={voucher._id} className="voucher-card">
-              <div className="voucher-header">
-                <h3>${voucher.amount.toFixed(2)}</h3>
-                <span className={`status-badge status-${getStatusColor(voucher.status)}`}>
-                  {voucher.status}
-                </span>
-              </div>
-
-              <p className="voucher-description">
-                {getTypeLabel(voucher.type)} voucher for {voucher.userId?.username || voucher.userId || 'Unknown User'}
-              </p>
-
-              <div className="voucher-details">
-                <div className="detail">
-                  <span className="detail-label">Code:</span>
-                  <span className="detail-value voucher-code">{voucher.code}</span>
-                </div>
-                <div className="detail">
-                  <span className="detail-label">Generated:</span>
-                  <span className="detail-value">{new Date(voucher.createdAt).toLocaleDateString()}</span>
-                </div>
-                <div className="detail">
-                  <span className="detail-label">Expires:</span>
-                  <span className="detail-value">{new Date(voucher.expiresAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-
-              <div className="voucher-actions">
-                <button className="action-btn copy" onClick={() => navigator.clipboard.writeText(voucher.code)}>
-                  <i className="fas fa-copy"></i> Copy Code
-                </button>
-                {voucher.status === 'active' && (
-                  <button
-                    className="action-btn delete"
-                    onClick={() => handleDeleteVoucher(voucher._id)}
-                  >
-                    <i className="fas fa-trash"></i> Delete
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {generatedVouchers.length === 0 && (
+        <div className="vouchers-table-container">
+          {generatedVouchers.length > 0 ? (
+            <table className="vouchers-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Code</th>
+                  <th>Amount</th>
+                  <th>Type</th>
+                  <th>Status</th>
+                  <th>Generated</th>
+                  <th>Expires</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {generatedVouchers.map((voucher) => (
+                  <tr key={voucher._id}>
+                    <td className="user-cell">
+                      <div className="user-info">
+                        <span className="username">{voucher.userId?.username || 'Unknown'}</span>
+                        <span className="email">{voucher.userId?.email || ''}</span>
+                      </div>
+                    </td>
+                    <td className="code-cell">
+                      <span className="voucher-code">{voucher.code}</span>
+                    </td>
+                    <td className="amount-cell">${voucher.amount.toFixed(2)}</td>
+                    <td className="type-cell">{getTypeLabel(voucher.type)}</td>
+                    <td className="status-cell">
+                      <span className={`status-badge status-${getStatusColor(voucher.status)}`}>
+                        {voucher.status}
+                      </span>
+                    </td>
+                    <td className="date-cell">{new Date(voucher.createdAt).toLocaleDateString()}</td>
+                    <td className="date-cell">{new Date(voucher.expiresAt).toLocaleDateString()}</td>
+                    <td className="actions-cell">
+                      <button
+                        className="action-btn copy"
+                        onClick={() => navigator.clipboard.writeText(voucher.code)}
+                        title="Copy Code"
+                      >
+                        <i className="fas fa-copy"></i>
+                      </button>
+                      {voucher.status === 'active' && (
+                        <button
+                          className="action-btn delete"
+                          onClick={() => handleDeleteVoucher(voucher._id)}
+                          title="Delete Voucher"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          ) : (
             <div className="no-voucher">
               <i className="fas fa-ticket-alt"></i>
               <p>No vouchers generated yet</p>

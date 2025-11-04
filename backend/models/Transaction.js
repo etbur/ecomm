@@ -18,7 +18,7 @@ const transactionSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['parent_child_reward', 'child_own_task', 'lucky_order_commission', 'deposit', 'withdrawal'],
+    enum: ['parent_child_reward', 'child_own_task', 'lucky_order_commission', 'deposit', 'withdrawal', 'parent_child_balance_transfer'],
     required: true
   },
   amount: {
