@@ -211,6 +211,12 @@
   border: 1px solid #f0f0f0;
 }
 
+.product-card.rated {
+  opacity: 0.7;
+  cursor: not-allowed;
+  position: relative;
+}
+
 .product-card:active {
   transform: scale(0.98);
 }
@@ -237,6 +243,20 @@
   border-radius: 8px;
   font-size: 0.7rem;
   font-weight: 500;
+}
+
+.rated-badge {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: linear-gradient(135deg, #4CAF50, #45a049);
+  color: white;
+  padding: 0.2rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 .product-info {

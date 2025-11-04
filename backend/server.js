@@ -1137,10 +1137,42 @@ app.post('/api/ratings', authenticateToken, async (req, res) => {
       return res.status(400).json({ message: 'Only 5-star ratings are allowed' });
     }
 
-    // Check if user already rated this product
-    const existingRating = await Rating.findOne({ userId, productId });
+    // Check if user already rated this product today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingRating = await Rating.findOne({
+      userId,
+      productId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
     if (existingRating) {
-      return res.status(400).json({ message: 'You have already rated this product' });
+      return res.status(400).json({ message: 'You have already rated this product today' });
+    }
+
+    // Enforce sequential rating - user must rate products in order
+    const allProducts = await Product.find({ isActive: true }).sort({ createdAt: 1 });
+    const currentProductIndex = allProducts.findIndex(p => p._id.toString() === productId);
+
+    if (currentProductIndex > 0) {
+      // Check if all previous products have been rated today
+      for (let i = 0; i < currentProductIndex; i++) {
+        const prevProduct = allProducts[i];
+        const prevRating = await Rating.findOne({
+          userId,
+          productId: prevProduct._id,
+          createdAt: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!prevRating) {
+          return res.status(400).json({
+            message: `You must rate "${prevProduct.name}" before rating this product. Please complete products in order.`
+          });
+        }
+      }
     }
 
     // Get product and user details
@@ -1191,6 +1223,61 @@ app.post('/api/ratings', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Submit rating error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Check sequential rating before showing modal
+app.post('/api/ratings/check-sequential', authenticateToken, async (req, res) => {
+  try {
+    const { productId } = req.body;
+    const userId = req.user.userId;
+
+    // Check if user already rated this product today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const existingRating = await Rating.findOne({
+      userId,
+      productId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    if (existingRating) {
+      return res.json({
+        canRate: false,
+        message: 'You have already rated this product today. Please complete products in order.'
+      });
+    }
+
+    // Enforce sequential rating - user must rate products in order
+    const allProducts = await Product.find({ isActive: true }).sort({ createdAt: 1 });
+    const currentProductIndex = allProducts.findIndex(p => p._id.toString() === productId);
+
+    if (currentProductIndex > 0) {
+      // Check if all previous products have been rated today
+      for (let i = 0; i < currentProductIndex; i++) {
+        const prevProduct = allProducts[i];
+        const prevRating = await Rating.findOne({
+          userId,
+          productId: prevProduct._id,
+          createdAt: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!prevRating) {
+          return res.json({
+            canRate: false,
+            message: `You must rate "${prevProduct.name}" before rating this product. Please complete products in order.`
+          });
+        }
+      }
+    }
+
+    res.json({ canRate: true });
+  } catch (error) {
+    console.error('Check sequential rating error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1462,11 +1549,37 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
       return res.status(400).json({ message: 'Product already rated today' });
     }
 
+    // Enforce sequential rating - user must rate products in order
+    const allProducts = await Product.find({ isActive: true }).sort({ createdAt: 1 });
+    const currentProductIndex = allProducts.findIndex(p => p._id.toString() === productId);
+
+    if (currentProductIndex > 0) {
+      // Check if all previous products have been rated today
+      for (let i = 0; i < currentProductIndex; i++) {
+        const prevProduct = allProducts[i];
+        const prevRating = await Rating.findOne({
+          userId,
+          productId: prevProduct._id,
+          createdAt: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!prevRating) {
+          return res.status(400).json({
+            message: `You must rate "${prevProduct.name}" before rating this product. Please complete products in order.`
+          });
+        }
+      }
+    }
+
     // Calculate profit
     const profit = product.reward - product.price;
-    
-    // Check for lucky order (random 10% chance)
-    if (Math.random() < 0.10) {
+
+    // Check for lucky order (random 10% chance, but exclude first product)
+    // Get all products to check if this is the first product
+    const allProductsSorted = await Product.find({ isActive: true }).sort({ createdAt: -1 });
+    const isFirstProduct = allProductsSorted.length > 0 && allProductsSorted[0]._id.toString() === productId;
+
+    if (!isFirstProduct && Math.random() < 0.10) {
       session.luckyOrderTriggered = true;
       session.luckyOrderCommission = profit * 0.0005; // 0.05% commission
     }
@@ -1583,6 +1696,82 @@ app.post('/api/daily-session/complete-task', authenticateToken, async (req, res)
     });
   } catch (error) {
     console.error('Complete task error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Check sequential rating for session mode
+app.post('/api/daily-session/check-sequential', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { productId } = req.body;
+
+    // Get active session for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    let session = await DailyTaskSession.findOne({
+      userId,
+      sessionDate: { $gte: today, $lt: tomorrow },
+      status: 'active'
+    });
+
+    if (!session) {
+      return res.json({
+        canRate: false,
+        message: 'No active daily session found. Please start a session first.'
+      });
+    }
+
+    if (session.tasksCompleted >= session.totalTasks) {
+      return res.json({
+        canRate: false,
+        message: 'Session already completed. Please start a new session.'
+      });
+    }
+
+    // Check if user already rated this product today
+    const existingRating = await Rating.findOne({
+      userId,
+      productId,
+      createdAt: { $gte: today, $lt: tomorrow }
+    });
+
+    if (existingRating) {
+      return res.json({
+        canRate: false,
+        message: 'You have already rated this product today. Please complete products in order.'
+      });
+    }
+
+    // Enforce sequential rating - user must rate products in order
+    const allProducts = await Product.find({ isActive: true }).sort({ createdAt: 1 });
+    const currentProductIndex = allProducts.findIndex(p => p._id.toString() === productId);
+
+    if (currentProductIndex > 0) {
+      // Check if all previous products have been rated today
+      for (let i = 0; i < currentProductIndex; i++) {
+        const prevProduct = allProducts[i];
+        const prevRating = await Rating.findOne({
+          userId,
+          productId: prevProduct._id,
+          createdAt: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!prevRating) {
+          return res.json({
+            canRate: false,
+            message: `You must rate "${prevProduct.name}" before rating this product. Please complete products in order.`
+          });
+        }
+      }
+    }
+
+    res.json({ canRate: true });
+  } catch (error) {
+    console.error('Check sequential rating error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });

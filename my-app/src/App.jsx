@@ -12,6 +12,7 @@ import Mine from './components/Mine';
 import Game from './components/Game';
 import Login from './components/Login';
 import Signup from './components/Signup';
+import Chatbot from './components/Chatbot';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminHome from './components/admin/AdminHome';
 import AdminUsers from './components/admin/AdminUsers';
@@ -164,6 +165,7 @@ function AppContent() {
           <BottomNav activePage={activePage} setActivePage={setActivePage} />
         </>
       )}
+      <Chatbot />
     </div>
   );
 }

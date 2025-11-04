@@ -47,6 +47,10 @@ export const ratingsApi = {
     method: 'POST',
     body: JSON.stringify({ productId, rating }),
   }),
+  checkSequentialRating: (productId) => makeRequest('/ratings/check-sequential', {
+    method: 'POST',
+    body: JSON.stringify({ productId }),
+  }),
   getMyRatings: () => makeRequest('/ratings/my'),
 };
 
@@ -77,6 +81,10 @@ export const sessionApi = {
     body: JSON.stringify({ parentUserId }),
   }),
   completeTask: (productId) => makeRequest('/daily-session/complete-task', {
+    method: 'POST',
+    body: JSON.stringify({ productId }),
+  }),
+  checkSequentialRating: (productId) => makeRequest('/daily-session/check-sequential', {
     method: 'POST',
     body: JSON.stringify({ productId }),
   }),

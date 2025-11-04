@@ -143,21 +143,21 @@ const Home = () => {
         response = await sessionApi.completeTask(selectedProduct._id);
         setActiveSession(response.session);
       } else {
-        // Use simple rating system (original approach)
+        // Use simple rating system (original approach) - only if no active session
         response = await ratingsApi.submit(selectedProduct._id, selectedRating);
-        
+
         // Update balance from response
         setBalance(response.newBalance);
-        
+
         // Reset state for simple mode
         setSelectedProduct(null);
         setShowRedeem(false);
         setSelectedRating(0);
-        
+
         // Show simple success message
         let message = `Rating submitted! Task completed! Profit: $${response.profit.toFixed(2)}`;
         alert(message);
-        
+
         // Reload data
         await loadInitialData();
         return;
@@ -194,13 +194,14 @@ const Home = () => {
     } catch (error) {
       console.error('Complete task error:', error);
       const errorMessage = handleApiError(error);
-      
+
       // Handle insufficient balance error
       if (errorMessage.includes('Insufficient balance')) {
         setShowRedeem(true);
         alert(`Insufficient balance! Please recharge to complete this task.`);
       } else {
-        setError(errorMessage);
+        // Show error as popup alert instead of banner
+        alert(errorMessage);
       }
     } finally {
       setSubmitting(false);
@@ -347,7 +348,7 @@ const Home = () => {
         <div className="header-content">
           <div className="balance-widget">
             <div className="balance-main">
-              <div className="balance-label">Your Balance</div>
+              <div className="balance-label">Your Diposited Balance</div>
               <div className="balance-amount">${balance.toFixed(2)}</div>
               {userRelationships?.user && (
                 <div className="user-type-badge">
