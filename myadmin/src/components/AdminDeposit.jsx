@@ -14,7 +14,7 @@ const AdminDeposit = () => {
   const fetchDeposits = async () => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       const response = await axios.get(`${apiUrl}/api/admin/deposits`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -29,7 +29,7 @@ const AdminDeposit = () => {
   const handleApproveDeposit = async (depositId) => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       await axios.put(`${apiUrl}/api/admin/deposits/${depositId}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -50,7 +50,7 @@ const AdminDeposit = () => {
   const handleRejectDeposit = async (depositId) => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       await axios.put(`${apiUrl}/api/admin/deposits/${depositId}/reject`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });

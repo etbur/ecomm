@@ -2810,8 +2810,14 @@ app.get('/api/user/vouchers', authenticateToken, async (req, res) => {
 const clientDist = path.join(__dirname, '../my-app/dist');
 app.use(express.static(clientDist));
 
+// Handle client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(path.join(clientDist, 'index.html'));
+  // Only serve index.html for non-API routes
+  if (!req.path.startsWith('/api/')) {
+    res.sendFile(path.join(clientDist, 'index.html'));
+  } else {
+    res.status(404).json({ message: 'API endpoint not found' });
+  }
 });
 
 app.listen(PORT, async () => {

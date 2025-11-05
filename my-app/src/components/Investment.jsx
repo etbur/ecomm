@@ -58,7 +58,7 @@ const Investment = () => {
         status: 'pending' // Requires admin authorization
       };
 
-      await axios.post('http://localhost:5000/api/investments', investmentData, {
+      await axios.post('https://shophub-w7f4.onrender.com/api/investments', investmentData, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

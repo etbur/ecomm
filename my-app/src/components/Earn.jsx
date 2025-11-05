@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import "./Earn.css";
 import { useAuth } from "../contexts/AuthContext";
 
-const API_BASE = 'http://localhost:5000/api';
+const API_BASE = 'https://shophub-w7f4.onrender.com/api';
 
 // Referral Section Styles (unchanged)
 const referralStyles = {

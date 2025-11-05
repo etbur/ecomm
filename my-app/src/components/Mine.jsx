@@ -235,7 +235,7 @@ const Mine = () => {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       console.log('Using API URL:', apiUrl);
       console.log('Making request to:', `${apiUrl}/api/user/setup-withdrawal`);
 

@@ -14,7 +14,7 @@ const AdminWithdraw = () => {
   const fetchWithdrawals = async () => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       const response = await axios.get(`${apiUrl}/api/admin/withdrawals`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -29,7 +29,7 @@ const AdminWithdraw = () => {
   const handleApproveWithdrawal = async (withdrawalId) => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       await axios.put(`${apiUrl}/api/admin/withdrawals/${withdrawalId}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -50,7 +50,7 @@ const AdminWithdraw = () => {
   const handleRejectWithdrawal = async (withdrawalId) => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
       await axios.put(`${apiUrl}/api/admin/withdrawals/${withdrawalId}/reject`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
