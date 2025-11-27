@@ -75,7 +75,7 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
 
     if (!formData.email) {
       newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
+    } else if (!formData.email) {
       newErrors.email = 'Please enter a valid email';
     }
 
@@ -109,7 +109,7 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('https://shophub-w7f4.onrender.com/api/auth/signup', {
+      const response = await fetch('http://localhost:5000/api/auth/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -199,17 +199,17 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
             {/* Email Field */}
             <div className="form-group">
               <label htmlFor="email" className="form-label">
-                Email Address
+                Phone Number
               </label>
               <div className="input-container">
                 <input
-                  type="email"
+                  type="text"
                   id="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
                   className={`form-input ${errors.email ? 'input-error' : ''}`}
-                  placeholder="Enter your email"
+                  placeholder="Enter your Phone"
                 />
                 <span className="input-icon"></span>
               </div>

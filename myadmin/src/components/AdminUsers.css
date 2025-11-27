@@ -141,7 +141,8 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .users-table {
@@ -162,6 +163,10 @@
   font-size: 0.9rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.users-table th:last-child {
+  min-width: 200px;
 }
 
 .users-table th:first-child {
@@ -187,6 +192,10 @@
   padding: 1.2rem 1rem;
   color: #2c3e50;
   font-weight: 500;
+}
+
+.users-table td:last-child {
+  min-width: 200px;
 }
 
 /* Badges */
@@ -224,11 +233,11 @@
   display: flex;
   gap: 0.5rem;
   justify-content: flex-start;
+  flex-wrap: wrap;
 }
 
 .action-btn {
-  width: 2.5rem;
-  height: 2.5rem;
+  padding: 0.5rem 0.75rem;
   border: none;
   border-radius: 8px;
   cursor: pointer;
@@ -236,7 +245,10 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  gap: 0.25rem;
+  white-space: nowrap;
 }
 
 .action-btn.view {
@@ -264,12 +276,15 @@
 .action-btn.delete {
   background: #fde8e8;
   color: #e74c3c;
+  font-weight: 600;
+  border: 2px solid #e74c3c;
 }
 
 .action-btn.delete:hover {
   background: #e74c3c;
   color: white;
-  transform: scale(1.1);
+  transform: scale(1.05);
+  border-color: #c0392b;
 }
 
 .action-btn.referrals {
@@ -322,6 +337,7 @@
 
   .users-table-container {
     overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .users-table {
@@ -334,6 +350,12 @@
 
   .action-buttons {
     justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .action-btn {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
   }
 }
 
@@ -601,5 +623,24 @@
 
 .users-table-container::-webkit-scrollbar-thumb:hover,
 .referrals-table-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Horizontal scrollbar styling for users table */
+.users-table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.users-table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.users-table-container::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.users-table-container::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
 }

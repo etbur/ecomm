@@ -10,7 +10,7 @@ const AdminTransactions = () => {
     const fetchInvestments = async () => {
       try {
         const token = localStorage.getItem('token');
-        const response = await axios.get('https://shophub-w7f4.onrender.com/api/admin/investments', {
+        const response = await axios.get('http://localhost:5000/api/admin/investments', {
           headers: { Authorization: `Bearer ${token}` }
         });
         setInvestments(response.data.investments);
@@ -27,7 +27,7 @@ const AdminTransactions = () => {
   const handleApproveInvestment = async (investmentId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`https://shophub-w7f4.onrender.com/api/admin/investments/${investmentId}/approve`, {}, {
+      await axios.put(`http://localhost:5000/api/admin/investments/${investmentId}/approve`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -46,7 +46,7 @@ const AdminTransactions = () => {
   const handleRejectInvestment = async (investmentId) => {
     try {
       const token = localStorage.getItem('token');
-      await axios.put(`https://shophub-w7f4.onrender.com/api/admin/investments/${investmentId}/reject`, {}, {
+      await axios.put(`http://localhost:5000/api/admin/investments/${investmentId}/reject`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

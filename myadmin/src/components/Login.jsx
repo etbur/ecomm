@@ -22,15 +22,59 @@ const Login = ({ onLogin }) => {
     setIsLoading(true);
     setError('');
 
-    // Simulate API call
-    setTimeout(() => {
+    // First try to create admin user if it doesn't exist
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
+      // Try to create admin user first
       if (formData.email === 'admin@example.com' && formData.password === 'admin123') {
-        onLogin();
-      } else {
-        setError('Invalid email or password');
+        try {
+          const createResponse = await fetch(`${apiUrl}/api/auth/create-test-user`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username: 'admin',
+              email: 'admin@example.com',
+              password: 'admin123'
+            })
+          });
+
+          if (createResponse.ok) {
+            console.log('Admin user created successfully');
+          }
+        } catch (createError) {
+          console.log('Admin user might already exist:', createError);
+        }
       }
+
+      // Now try to login
+      const response = await fetch(`${apiUrl}/api/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        onLogin(data.user, data.token);
+      } else {
+        console.log('Login failed:', data);
+        setError(data.message || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      setError('Network error. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -104,9 +148,12 @@ const Login = ({ onLogin }) => {
         </form>
 
         <div className="login-footer">
-          <p>Demo Credentials:</p>
+          <p>Admin Credentials:</p>
           <p><strong>Email:</strong> admin@example.com</p>
           <p><strong>Password:</strong> admin123</p>
+          <p style={{ fontSize: '12px', color: '#666', marginTop: '10px' }}>
+            Note: Make sure the backend server is running and admin user exists in database.
+          </p>
         </div>
       </div>
     </div>

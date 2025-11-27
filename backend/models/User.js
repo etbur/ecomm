@@ -21,7 +21,7 @@ const userSchema = new mongoose.Schema({
   },
   balance: {
     type: Number,
-    default: 25.00,
+    default: 0.00,
     min: 0
   },
   referralCode: {

@@ -23,7 +23,7 @@ const AdminVentures = () => {
   const fetchVentures = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('https://shophub-w7f4.onrender.com/api/admin/ventures', {
+      const response = await fetch('http://localhost:5000/api/admin/ventures', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -54,7 +54,7 @@ const AdminVentures = () => {
         investment: parseFloat(newVenture.investment)
       };
 
-      const response = await fetch('https://shophub-w7f4.onrender.com/api/admin/ventures', {
+      const response = await fetch('http://localhost:5000/api/admin/ventures', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -92,7 +92,7 @@ const AdminVentures = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch(`https://shophub-w7f4.onrender.com/api/admin/ventures/${ventureId}`, {
+      const response = await fetch(`http://localhost:5000/api/admin/ventures/${ventureId}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -1,4 +1,4 @@
-const API_BASE_URL = 'https://shophub-w7f4.onrender.com/api';
+const API_BASE_URL = `${import.meta.env.VITE_API_URL}/api`;
 
 // Helper function to get auth token
 const getAuthToken = () => {
@@ -120,6 +120,15 @@ export const authApi = {
   getMe: () => makeRequest('/auth/me'),
 };
 
+// Game API
+export const gameApi = {
+  getPlayers: () => makeRequest('/game/players'),
+  updateBalance: (amount, type, description) => makeRequest('/user/game-balance', {
+    method: 'POST',
+    body: JSON.stringify({ amount, type, description }),
+  }),
+};
+
 // Helper function to handle API errors
 export const handleApiError = (error) => {
   if (error.message.includes('401') || error.message.includes('403')) {
@@ -130,6 +139,6 @@ export const handleApiError = (error) => {
     window.location.href = '/';
     return 'Session expired. Please log in again.';
   }
-  
+
   return error.message || 'An error occurred. Please try again.';
 };

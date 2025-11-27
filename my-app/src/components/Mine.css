@@ -1,4 +1,4 @@
-/* Earn.css */
+/* Mine.css - Profile Page Styles */
 :root {
   --primary-color: #4a6cf7;
   --primary-dark: #3a5ae0;
@@ -32,6 +32,8 @@
   --box-shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.15);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-fast: all 0.15s ease;
+  --glass-bg: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.2);
 }
 
 /* Container */
@@ -41,40 +43,216 @@
   padding: 0 20px;
 }
 
-/* Page Header */
-.page-header {
+/* Profile Page Styles */
+.page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px 0;
+}
+
+.page h3 {
+  color: var(--white);
+  font-size: 1.8rem;
+  font-weight: 700;
+  margin-bottom: 2rem;
   text-align: center;
-  margin-bottom: 3rem;
-  padding: 2rem 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
 }
 
-.page-title {
-  font-size: 2.5rem;
-  font-weight: 800;
-  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  margin-bottom: 0.5rem;
-  line-height: 1.2;
+/* Action Buttons Grid */
+.page .action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  margin: 2rem 0;
 }
 
-.page-subtitle {
-  font-size: 1.1rem;
-  color: var(--gray-600);
-  max-width: 600px;
-  margin: 0 auto;
-  line-height: 1.6;
-}
-
-/* Project Header */
-.project-header {
-  background: var(--white);
+/* Individual Action Button Cards */
+.action-button-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(15px);
   border-radius: var(--border-radius-lg);
-  box-shadow: var(--box-shadow);
-  margin-bottom: 3rem;
+  padding: 2rem;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--box-shadow-lg);
+  transition: var(--transition);
+  position: relative;
   overflow: hidden;
-  border: 1px solid var(--gray-200);
+  cursor: pointer;
+}
+
+.action-button-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.6s ease;
+}
+
+.action-button-card:hover::before {
+  left: 100%;
+}
+
+.action-button-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.action-button-card.withdraw {
+  background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(192, 57, 43, 0.1) 100%);
+  border-left: 4px solid var(--danger-color);
+}
+
+.action-button-card.deposit {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(41, 128, 185, 0.1) 100%);
+  border-left: 4px solid #3498db;
+}
+
+.action-button-card.history {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(142, 68, 173, 0.1) 100%);
+  border-left: 4px solid #9b59b6;
+}
+
+.action-button-card.vouchers {
+  background: linear-gradient(135deg, rgba(241, 196, 15, 0.1) 0%, rgba(243, 156, 18, 0.1) 100%);
+  border-left: 4px solid var(--warning-color);
+}
+
+.action-button-card.setup {
+  background: linear-gradient(135deg, rgba(149, 165, 166, 0.1) 0%, rgba(127, 140, 141, 0.1) 100%);
+  border-left: 4px solid #95a5a6;
+}
+
+.action-button-card.update {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(39, 174, 96, 0.1) 100%);
+  border-left: 4px solid var(--success-color);
+}
+
+.action-button-content {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.action-button-icon {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  flex-shrink: 0;
+}
+
+.action-button-card.withdraw .action-button-icon {
+  background: linear-gradient(135deg, var(--danger-color) 0%, #c0392b 100%);
+  color: var(--white);
+  box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+}
+
+.action-button-card.deposit .action-button-icon {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+  color: var(--white);
+  box-shadow: 0 4px 15px rgba(52, 152, 219, 0.4);
+}
+
+.action-button-card.history .action-button-icon {
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  color: var(--white);
+  box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+}
+
+.action-button-card.vouchers .action-button-icon {
+  background: linear-gradient(135deg, var(--warning-color) 0%, #f39c12 100%);
+  color: var(--white);
+  box-shadow: 0 4px 15px rgba(241, 196, 15, 0.4);
+}
+
+.action-button-card.setup .action-button-icon,
+.action-button-card.update .action-button-icon {
+  background: linear-gradient(135deg, #95a5a6 0%, #7f8c8d 100%);
+  color: var(--white);
+  box-shadow: 0 4px 15px rgba(149, 165, 166, 0.4);
+}
+
+.action-button-info h4 {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--white);
+}
+
+.action-button-info p {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.95rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.action-button-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  color: var(--white);
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  backdrop-filter: blur(5px);
+}
+
+/* User Profile Section */
+.user-profile {
+  background: var(--glass-bg);
+  backdrop-filter: blur(15px);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  margin: 2rem 0;
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--box-shadow-lg);
+}
+
+.user-profile-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  transition: var(--transition);
+}
+
+.user-profile-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding-left: 1rem;
+  padding-right: 1rem;
+  margin: 0 -1rem;
+}
+
+.user-profile-item:last-child {
+  border-bottom: none;
+}
+
+.user-profile-item span:first-child {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 1rem;
+}
+
+.user-profile-item span:last-child {
+  font-weight: 700;
+  color: var(--white);
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  backdrop-filter: blur(5px);
 }
 
 .project-header-content {
@@ -1147,20 +1325,22 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(10px);
 }
 
 .modal-content {
-  background: var(--white);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.9) 100%);
+  backdrop-filter: blur(20px);
   border-radius: var(--border-radius-lg);
-  padding: 2rem;
+  padding: 2.5rem;
   max-width: 500px;
   width: 90%;
   max-height: 80vh;
   overflow-y: auto;
   position: relative;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  animation: modalAppear 0.3s ease-out;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  animation: modalAppear 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .modal-header {
@@ -1173,10 +1353,14 @@
 }
 
 .modal-header h3 {
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: 700;
   color: var(--gray-900);
   margin: 0;
+  background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .close-btn {
@@ -1208,16 +1392,40 @@
 .vouchers-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .voucher-item {
-  background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-  border-radius: var(--border-radius);
-  padding: 1.5rem;
+  background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 50%, #6366f1 100%);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
   color: var(--white);
-  box-shadow: 0 4px 15px rgba(30, 58, 138, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 25px rgba(30, 58, 138, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  transition: var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+.voucher-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+  transition: left 0.6s ease;
+}
+
+.voucher-item:hover::before {
+  left: 100%;
+}
+
+.voucher-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 35px rgba(30, 58, 138, 0.6);
 }
 
 .voucher-header {

@@ -12,6 +12,15 @@ const AdminUserTasks = () => {
     status: ''
   });
   const [pagination, setPagination] = useState(null);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [productForm, setProductForm] = useState({
+    name: '',
+    price: '',
+    image: '',
+    category: '',
+    reward: '36.00'
+  });
+  const [productLoading, setProductLoading] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -92,12 +101,181 @@ const AdminUserTasks = () => {
     }
   };
 
+  const handleProductFormChange = (field, value) => {
+    setProductForm(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const handleCreateProduct = async (e) => {
+    e.preventDefault();
+
+    if (!productForm.name || !productForm.price || !productForm.image || !productForm.category) {
+      alert('Please fill in all required fields');
+      return;
+    }
+
+    setProductLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+
+      const response = await fetch(`${apiUrl}/api/products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: productForm.name,
+          price: parseFloat(productForm.price),
+          image: productForm.image,
+          category: productForm.category,
+          reward: parseFloat(productForm.reward)
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to create product');
+      }
+
+      const data = await response.json();
+      alert('Product created successfully!');
+
+      // Reset form
+      setProductForm({
+        name: '',
+        price: '',
+        image: '',
+        category: '',
+        reward: '36.00'
+      });
+      setShowProductForm(false);
+
+    } catch (error) {
+      console.error('Error creating product:', error);
+      alert(`Error creating product: ${error.message}`);
+    } finally {
+      setProductLoading(false);
+    }
+  };
+
   return (
     <div className="admin-user-tasks">
       <div className="page-header">
         <h1>User Task Completions</h1>
         <p>View all task completions by users</p>
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowProductForm(!showProductForm)}
+        >
+          <i className="fas fa-plus"></i> Add Product
+        </button>
       </div>
+
+      {/* Product Creation Form */}
+      {showProductForm && (
+        <div className="product-form-container">
+          <div className="product-form-card">
+            <div className="form-header">
+              <h3>Add New Product</h3>
+              <button
+                className="close-btn"
+                onClick={() => setShowProductForm(false)}
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <form onSubmit={handleCreateProduct} className="product-form">
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="product-name">Product Name *</label>
+                  <input
+                    type="text"
+                    id="product-name"
+                    value={productForm.name}
+                    onChange={(e) => handleProductFormChange('name', e.target.value)}
+                    placeholder="e.g., Wireless Bluetooth Headphones"
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="product-price">Price ($) *</label>
+                  <input
+                    type="number"
+                    id="product-price"
+                    value={productForm.price}
+                    onChange={(e) => handleProductFormChange('price', e.target.value)}
+                    placeholder="89.99"
+                    step="0.01"
+                    min="0"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label htmlFor="product-image">Image URL *</label>
+                <input
+                  type="url"
+                  id="product-image"
+                  value={productForm.image}
+                  onChange={(e) => handleProductFormChange('image', e.target.value)}
+                  placeholder="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=300&h=300&fit=crop"
+                  required
+                />
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="product-category">Category *</label>
+                  <select
+                    id="product-category"
+                    value={productForm.category}
+                    onChange={(e) => handleProductFormChange('category', e.target.value)}
+                    required
+                  >
+                    <option value="">Select Category</option>
+                    <option value="Electronics">Electronics</option>
+                    <option value="Fashion">Fashion</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Home">Home</option>
+                    <option value="Stationery">Stationery</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label htmlFor="product-reward">Reward ($)</label>
+                  <input
+                    type="number"
+                    id="product-reward"
+                    value={productForm.reward}
+                    onChange={(e) => handleProductFormChange('reward', e.target.value)}
+                    placeholder="36.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+              </div>
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowProductForm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-primary"
+                  disabled={productLoading}
+                >
+                  {productLoading ? 'Creating...' : 'Create Product'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="filters-section">

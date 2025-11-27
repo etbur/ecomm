@@ -10,6 +10,8 @@ const AdminVoucher = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showGenerateForm, setShowGenerateForm] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedVoucher, setSelectedVoucher] = useState(null);
 
   useEffect(() => {
     fetchUsers();
@@ -42,7 +44,7 @@ const AdminVoucher = () => {
   const fetchGeneratedVouchers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/admin/vouchers`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -75,7 +77,7 @@ const AdminVoucher = () => {
         generatedBy: 'admin'
       };
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/admin/vouchers`, {
         method: 'POST',
         headers: {
@@ -111,7 +113,7 @@ const AdminVoucher = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/admin/vouchers/${voucherId}`, {
         method: 'DELETE',
         headers: {
@@ -147,6 +149,11 @@ const AdminVoucher = () => {
       case 'bonus': return 'Bonus';
       default: return type;
     }
+  };
+
+  const handleViewVoucher = (voucher) => {
+    setSelectedVoucher(voucher);
+    setShowViewModal(true);
   };
 
   return (
@@ -299,11 +306,18 @@ const AdminVoucher = () => {
                     <td className="date-cell">{new Date(voucher.expiresAt).toLocaleDateString()}</td>
                     <td className="actions-cell">
                       <button
+                        className="action-btn view"
+                        onClick={() => handleViewVoucher(voucher)}
+                        title="View Voucher"
+                      >
+                        👁️
+                      </button>
+                      <button
                         className="action-btn copy"
                         onClick={() => navigator.clipboard.writeText(voucher.code)}
                         title="Copy Code"
                       >
-                        <i className="fas fa-copy"></i>
+                        📋
                       </button>
                       {voucher.status === 'active' && (
                         <button
@@ -311,7 +325,7 @@ const AdminVoucher = () => {
                           onClick={() => handleDeleteVoucher(voucher._id)}
                           title="Delete Voucher"
                         >
-                          <i className="fas fa-trash"></i>
+                          🗑️
                         </button>
                       )}
                     </td>
@@ -325,6 +339,114 @@ const AdminVoucher = () => {
               <p>No vouchers generated yet</p>
             </div>
           )}
+        </div>
+      )}
+
+      {/* View Voucher Modal */}
+      {showViewModal && selectedVoucher && (
+        <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
+          <div className="modal-content voucher-view-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3>Voucher Receipt</h3>
+              <button className="close-btn" onClick={() => setShowViewModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="receipt-container">
+                {/* Receipt Header */}
+                <div className="receipt-header">
+                  <div className="receipt-brand">
+                    <div className="brand-icon">🎁</div>
+                    <div className="brand-text">
+                      <h1>Gift Voucher</h1>
+                      <p>Digital Gift Card</p>
+                    </div>
+                  </div>
+                  <div className="receipt-status">
+                    <span className={`status-badge status-${getStatusColor(selectedVoucher.status)}`}>
+                      {selectedVoucher.status.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Amount Section */}
+                <div className="receipt-amount-section">
+                  <div className="amount-label">Amount</div>
+                  <div className="amount-value">${selectedVoucher.amount.toFixed(2)}</div>
+                  <div className="amount-currency">USD</div>
+                </div>
+
+                {/* Transaction Details */}
+                <div className="receipt-details">
+                  <div className="detail-group">
+                    <h3>Transaction Details</h3>
+                    <div className="detail-item">
+                      <span className="detail-label">Voucher Code:</span>
+                      <span className="detail-value code">{selectedVoucher.code}</span>
+                      <button
+                        className="copy-btn-inline"
+                        onClick={() => navigator.clipboard.writeText(selectedVoucher.code)}
+                        title="Copy Code"
+                      >
+                        📋
+                      </button>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Type:</span>
+                      <span className="detail-value">{getTypeLabel(selectedVoucher.type)}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Recipient:</span>
+                      <span className="detail-value">{selectedVoucher.userId?.username || 'Unknown'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Email:</span>
+                      <span className="detail-value">{selectedVoucher.userId?.email || 'N/A'}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Generated By:</span>
+                      <span className="detail-value">{selectedVoucher.generatedBy || 'Admin'}</span>
+                    </div>
+                  </div>
+
+                  <div className="detail-group">
+                    <h3>Timeline</h3>
+                    <div className="detail-item">
+                      <span className="detail-label">Created:</span>
+                      <span className="detail-value">{new Date(selectedVoucher.createdAt).toLocaleString()}</span>
+                    </div>
+                    <div className="detail-item">
+                      <span className="detail-label">Expires:</span>
+                      <span className="detail-value">{new Date(selectedVoucher.expiresAt).toLocaleString()}</span>
+                    </div>
+                    {selectedVoucher.usedAt && (
+                      <div className="detail-item">
+                        <span className="detail-label">Redeemed:</span>
+                        <span className="detail-value">{new Date(selectedVoucher.usedAt).toLocaleString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* QR Code Section */}
+                <div className="receipt-qr-section">
+                  <h4>Scan to Redeem</h4>
+                  <div className="qr-placeholder">
+                    <i className="fas fa-qrcode"></i>
+                    <p>QR Code</p>
+                    <small>Scan with mobile app to redeem instantly</small>
+                  </div>
+                </div>
+
+                {/* Receipt Footer */}
+                <div className="receipt-footer">
+                  <p>Thank you for using our service!</p>
+                  <small>This is an official voucher receipt. Keep this information secure.</small>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

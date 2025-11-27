@@ -1157,6 +1157,307 @@
   }
 }
 
+/* Product Table Styles */
+.products-table, .tasks-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--admin-shadow);
+  border: 1px solid var(--admin-border);
+}
+
+.products-table th,
+.products-table td {
+  padding: 16px;
+  text-align: left;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.products-table th {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  font-weight: 600;
+  color: var(--admin-dark);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.products-table td {
+  color: var(--admin-gray);
+  font-size: 0.95rem;
+}
+
+.products-table tbody tr:hover {
+  background: rgba(102, 126, 234, 0.02);
+}
+
+.product-image-cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.product-thumbnail-small {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid var(--admin-border);
+  transition: all 0.3s ease;
+}
+
+.product-thumbnail-small:hover {
+  transform: scale(1.1);
+  border-color: var(--admin-primary);
+}
+
+.product-name-cell, .task-title-cell {
+  max-width: 200px;
+}
+
+.product-name-cell strong, .task-title-cell strong {
+  color: var(--admin-dark);
+  font-weight: 600;
+}
+
+.task-description-cell {
+  max-width: 250px;
+  line-height: 1.4;
+}
+
+.type-badge {
+  background: linear-gradient(135deg, var(--admin-info) 0%, #17a2b8 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.completion-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.completion-rate {
+  font-weight: 600;
+  color: var(--admin-dark);
+  font-size: 0.9rem;
+}
+
+.mini-progress-bar {
+  width: 60px;
+  height: 4px;
+  background: var(--admin-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.mini-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--admin-success), #28a745);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.category-badge {
+  background: linear-gradient(135deg, var(--admin-info) 0%, #17a2b8 100%);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: capitalize;
+}
+
+.status-active {
+  background: linear-gradient(135deg, var(--admin-success) 0%, #28a745 100%);
+  color: white;
+}
+
+.status-inactive {
+  background: linear-gradient(135deg, var(--admin-danger) 0%, #dc3545 100%);
+  color: white;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  flex-wrap: nowrap;
+}
+
+.action-btn {
+  padding: 6px 8px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  color: white;
+}
+
+.action-btn.edit {
+  background: linear-gradient(135deg, var(--admin-info) 0%, #17a2b8 100%);
+  color: white;
+}
+
+.action-btn.edit:hover {
+  background: linear-gradient(135deg, #17a2b8 0%, var(--admin-info) 100%);
+  transform: translateY(-2px);
+}
+
+.action-btn.activate {
+  background: linear-gradient(135deg, var(--admin-success) 0%, #28a745 100%);
+  color: white;
+}
+
+.action-btn.activate:hover {
+  background: linear-gradient(135deg, #28a745 0%, var(--admin-success) 100%);
+  transform: translateY(-2px);
+}
+
+.action-btn.deactivate {
+  background: linear-gradient(135deg, var(--admin-warning) 0%, #ffc107 100%);
+  color: white;
+}
+
+.action-btn.deactivate:hover {
+  background: linear-gradient(135deg, #ffc107 0%, var(--admin-warning) 100%);
+  transform: translateY(-2px);
+}
+
+.action-btn.delete {
+  background: linear-gradient(135deg, var(--admin-danger) 0%, #dc3545 100%);
+  color: white;
+}
+
+.action-btn.delete:hover {
+  background: linear-gradient(135deg, #dc3545 0%, var(--admin-danger) 100%);
+  transform: translateY(-2px);
+}
+
+/* Tab Navigation */
+.tab-navigation {
+  display: flex;
+  background: white;
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 24px;
+  box-shadow: var(--admin-shadow);
+  border: 1px solid var(--admin-border);
+  width: fit-content;
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  border: none;
+  background: none;
+  color: var(--admin-gray);
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, var(--admin-primary) 0%, var(--admin-secondary) 100%);
+  color: white;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.tab-btn:hover:not(.active) {
+  background: rgba(102, 126, 234, 0.1);
+  color: var(--admin-primary);
+}
+
+/* Table Container */
+.table-container {
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--admin-shadow);
+  border: 1px solid var(--admin-border);
+  margin-bottom: 24px;
+}
+
+.table-container::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+  background: var(--admin-border);
+  border-radius: 4px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+  background: var(--admin-gray);
+}
+
+/* Responsive Table */
+@media (max-width: 768px) {
+  .products-table {
+    font-size: 0.85rem;
+  }
+
+  .products-table th,
+  .products-table td {
+    padding: 12px 8px;
+  }
+
+  .product-thumbnail-small {
+    width: 32px;
+    height: 32px;
+  }
+
+  .action-buttons {
+    flex-direction: row;
+    gap: 2px;
+    flex-wrap: nowrap;
+  }
+
+  .action-btn {
+    padding: 4px 6px;
+    min-width: 28px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .tab-navigation {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .tab-btn {
+    padding: 10px 16px;
+    font-size: 0.9rem;
+  }
+}
+
 /* Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
   * {

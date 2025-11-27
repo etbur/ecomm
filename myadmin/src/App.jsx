@@ -8,6 +8,7 @@ import AdminTransactions from './components/AdminTransactions'
 import AdminVoucher from './components/AdminVoucher'
 import AdminWithdraw from './components/AdminWithdraw'
 import AdminDeposit from './components/AdminDeposit'
+import AdminCommunication from './components/AdminCustomerService'
 import AdminSettings from './components/AdminSettings'
 import Login from './components/Login'
 import './App.css'
@@ -15,9 +16,13 @@ import './App.css'
 function App() {
   const [activePage, setActivePage] = useState('admin-home')
   const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState(null)
 
-  const handleLogin = () => {
+  const handleLogin = (userData, token) => {
     setIsAuthenticated(true)
+    setUser(userData)
+    localStorage.setItem('token', token)
+    localStorage.setItem('user', JSON.stringify(userData))
   }
 
   const handleLogout = () => {
@@ -43,6 +48,8 @@ function App() {
         return <AdminWithdraw />
       case 'admin-deposits':
         return <AdminDeposit />
+      case 'admin-communication':
+        return <AdminCommunication />
       case 'admin-settings':
         return <AdminSettings />
       default:

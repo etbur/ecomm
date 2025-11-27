@@ -25,7 +25,7 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/admin/users`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -54,7 +54,7 @@ const AdminUsers = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/admin/users/${userId}`, {
         method: 'DELETE',
         headers: {
@@ -83,7 +83,7 @@ const AdminUsers = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/admin/set-withdrawal-credentials`, {
         method: 'POST',
         headers: {
@@ -109,10 +109,47 @@ const AdminUsers = () => {
     }
   };
 
+  const handleEditBalance = async (userId, currentBalance) => {
+    const newBalance = prompt('Enter new balance amount:', currentBalance);
+    if (newBalance === null) return; // User cancelled
+
+    const balance = parseFloat(newBalance);
+    if (isNaN(balance) || balance < 0) {
+      alert('Please enter a valid positive number for balance');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+      const response = await fetch(`${apiUrl}/api/admin/users/${userId}/balance`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          balance: balance
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to update balance');
+      }
+
+      alert('Balance updated successfully');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error updating balance:', error);
+      alert(`Error updating balance: ${error.message}`);
+    }
+  };
+
   const handleViewReferrals = async (user) => {
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/user/referrals`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -150,7 +187,7 @@ const AdminUsers = () => {
     setAddUserLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://newwork-2.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const response = await fetch(`${apiUrl}/api/auth/create-test-user`, {
         method: 'POST',
         headers: {
@@ -416,28 +453,35 @@ const AdminUsers = () => {
                         title="View Details"
                         onClick={() => setSelectedUser(user)}
                       >
-                        <i className="fas fa-eye"></i>
+                        👁️
                       </button>
                       <button
                         className="action-btn referrals"
                         title="View Referrals"
                         onClick={() => handleViewReferrals(user)}
                       >
-                        <i className="fas fa-users"></i>
+                        👥
+                      </button>
+                      <button
+                        className="action-btn edit-balance"
+                        title="Edit Balance"
+                        onClick={() => handleEditBalance(user._id, user.balance)}
+                      >
+                        💵
                       </button>
                       <button
                         className="action-btn edit"
                         title="Set Withdrawal Credentials"
                         onClick={() => handleSetWithdrawCredentials(user._id)}
                       >
-                        <i className="fas fa-money-bill-wave"></i>
+                        💰
                       </button>
                       <button
                         className="action-btn delete"
-                        title="Delete"
+                        title="Delete User"
                         onClick={() => handleDeleteUser(user._id)}
                       >
-                        <i className="fas fa-trash"></i>
+                        🗑️
                       </button>
                     </div>
                   </td>

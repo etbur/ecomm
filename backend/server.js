@@ -6,6 +6,8 @@ import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 import User from './models/User.js';
 import Product from './models/Product.js';
 import Rating from './models/Rating.js';
@@ -15,19 +17,68 @@ import Transaction from './models/Transaction.js';
 import Withdrawal from './models/Withdrawal.js';
 import Deposit from './models/Deposit.js';
 import Voucher from './models/Voucher.js';
+import ChatMessage from './models/Chat.js';
+import multer from 'multer';
+import fs from 'fs';
 
 dotenv.config();
 
 const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    methods: ["GET", "POST"]
+  }
+});
+
+// Resolve __dirname in ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const PORT = process.env.PORT || 5001;
+
+// Create uploads directory if it doesn't exist
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|pdf|doc|docx|txt|zip|rar/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Invalid file type'));
+    }
+  }
+});
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 
-// Resolve __dirname in ES modules
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// Serve uploaded files statically
+app.use('/uploads', express.static(uploadsDir));
 
 // -----------------------
 // MongoDB Connection
@@ -330,6 +381,49 @@ app.delete('/api/admin/users/:id', authenticateToken, async (req, res) => {
     res.json({ message: 'User deleted successfully' });
   } catch (error) {
     console.error('Delete user error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user balance (admin only)
+app.put('/api/admin/users/:id/balance', authenticateToken, async (req, res) => {
+  try {
+    const { balance } = req.body;
+    const userId = req.params.id;
+
+    if (balance === undefined || isNaN(balance) || balance < 0) {
+      return res.status(400).json({ message: 'Valid balance amount is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const oldBalance = user.balance;
+    user.balance = parseFloat(balance);
+    await user.save();
+
+    // Create transaction record for balance update
+    const balanceDifference = parseFloat(balance) - oldBalance;
+    const transaction = new Transaction({
+      fromUserId: userId,
+      toUserId: userId,
+      type: 'admin_balance_update',
+      amount: Math.abs(balanceDifference), // Always positive amount
+      description: `Balance updated by admin from $${oldBalance.toFixed(2)} to $${parseFloat(balance).toFixed(2)} (${balanceDifference >= 0 ? 'increased' : 'decreased'} by $${Math.abs(balanceDifference).toFixed(2)})`
+    });
+
+    await transaction.save();
+
+    res.json({
+      message: 'User balance updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        balance: user.balance
+      }
+    });
+  } catch (error) {
+    console.error('Update balance error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -925,7 +1019,7 @@ app.post('/api/admin/reset-products', async (req, res) => {
 // Get all products
 app.get('/api/products', async (req, res) => {
   try {
-    const products = await Product.find({ isActive: true }).sort({ createdAt: -1 });
+    const products = await Product.find({}).sort({ createdAt: -1 });
     res.json({ products });
   } catch (error) {
     console.error('Get products error:', error);
@@ -937,7 +1031,7 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/products', authenticateToken, async (req, res) => {
   try {
     const { name, price, image, category, reward } = req.body;
-    
+
     if (!name || !price || !image || !category) {
       return res.status(400).json({ message: 'Name, price, image, and category are required' });
     }
@@ -954,6 +1048,47 @@ app.post('/api/products', authenticateToken, async (req, res) => {
     res.status(201).json({ product });
   } catch (error) {
     console.error('Create product error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update product (admin only)
+app.put('/api/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const { name, price, image, category, reward, isActive } = req.body;
+    const productId = req.params.id;
+
+    const product = await Product.findById(productId);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+
+    // Update fields
+    if (name !== undefined) product.name = name;
+    if (price !== undefined) product.price = parseFloat(price);
+    if (image !== undefined) product.image = image;
+    if (category !== undefined) product.category = category;
+    if (reward !== undefined) product.reward = parseFloat(reward);
+    if (isActive !== undefined) product.isActive = isActive;
+
+    await product.save();
+    res.json({ product });
+  } catch (error) {
+    console.error('Update product error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Delete product (admin only)
+app.delete('/api/products/:id', authenticateToken, async (req, res) => {
+  try {
+    const product = await Product.findByIdAndDelete(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: 'Product not found' });
+    }
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Delete product error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -1389,6 +1524,77 @@ app.get('/api/user/balance', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Get balance error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Update user balance for game transactions
+app.post('/api/user/game-balance', authenticateToken, async (req, res) => {
+  try {
+    const { amount, type, description } = req.body;
+    const userId = req.user.userId;
+
+    if (!amount || isNaN(amount)) {
+      return res.status(400).json({ message: 'Valid amount is required' });
+    }
+
+    if (!type || !['win', 'loss'].includes(type)) {
+      return res.status(400).json({ message: 'Valid type (win/loss) is required' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const amountChange = parseFloat(amount);
+    const oldBalance = user.balance;
+
+    if (type === 'loss') {
+      // Deduct amount for loss
+      user.balance -= amountChange;
+    } else if (type === 'win') {
+      // Add amount for win
+      user.balance += amountChange;
+    }
+
+    // Ensure balance doesn't go negative
+    if (user.balance < 0) {
+      user.balance = 0;
+    }
+
+    await user.save();
+
+    // Create transaction record for game activity
+    const transaction = new Transaction({
+      fromUserId: userId,
+      toUserId: userId,
+      type: `game_${type}`,
+      amount: Math.abs(amountChange),
+      description: description || `Game ${type}: ${type === 'win' ? '+' : '-'}$${amountChange.toFixed(2)}`,
+      gameData: {
+        gameType: 'crash',
+        multiplier: null, // Could be added later if needed
+        betAmount: type === 'loss' ? amountChange : 0,
+        winAmount: type === 'win' ? amountChange : 0
+      }
+    });
+
+    await transaction.save();
+
+    res.json({
+      message: `Balance updated for game ${type}`,
+      newBalance: user.balance,
+      amountChanged: amountChange,
+      transaction: {
+        id: transaction._id,
+        type: transaction.type,
+        amount: transaction.amount,
+        description: transaction.description
+      }
+    });
+  } catch (error) {
+    console.error('Game balance update error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -2550,6 +2756,286 @@ app.post('/api/user/withdrawals', authenticateToken, async (req, res) => {
 });
 
 // -----------------------
+// Chat Routes
+// -----------------------
+
+// Get chat messages for a user (admin)
+app.get('/api/admin/chat/messages/:userId', authenticateToken, async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const conversationId = `user_${userId}_admin`;
+
+    const messages = await ChatMessage.find({ conversationId })
+      .sort({ createdAt: 1 })
+      .populate('senderId', 'username email')
+      .lean();
+
+    // Mark messages from user as read when admin views them
+    await ChatMessage.updateMany(
+      { conversationId, senderType: 'user', isRead: false },
+      { isRead: true, readAt: new Date() }
+    );
+
+    // Transform messages for frontend
+    const transformedMessages = messages.map(msg => ({
+      _id: msg._id,
+      senderId: msg.senderId._id || msg.senderId,
+      message: msg.message,
+      timestamp: msg.createdAt,
+      isFromUser: msg.senderType === 'user',
+      messageType: msg.messageType,
+      mediaUrl: msg.mediaUrl,
+      mediaName: msg.mediaName,
+      mediaSize: msg.mediaSize,
+      isRead: msg.isRead
+    }));
+
+    res.json({ messages: transformedMessages });
+  } catch (error) {
+    console.error('Get chat messages error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Send message from admin to user
+app.post('/api/admin/chat/send', authenticateToken, async (req, res) => {
+  try {
+    const { userId, message, isFromAdmin } = req.body;
+
+    if (!userId || !message) {
+      return res.status(400).json({ message: 'User ID and message are required' });
+    }
+
+    const conversationId = `user_${userId}_admin`;
+
+    const chatMessage = new ChatMessage({
+      conversationId,
+      senderId: req.user.userId, // Admin's user ID
+      senderType: 'admin',
+      message: message.trim(),
+      messageType: 'text'
+    });
+
+    await chatMessage.save();
+
+    // Populate sender info
+    await chatMessage.populate('senderId', 'username email');
+
+    const transformedMessage = {
+      _id: chatMessage._id,
+      senderId: chatMessage.senderId._id || chatMessage.senderId,
+      message: chatMessage.message,
+      timestamp: chatMessage.createdAt,
+      isFromUser: false,
+      messageType: chatMessage.messageType,
+      mediaUrl: chatMessage.mediaUrl,
+      mediaName: chatMessage.mediaName,
+      mediaSize: chatMessage.mediaSize
+    };
+
+    res.json({
+      message: 'Message sent successfully',
+      chatMessage: transformedMessage
+    });
+  } catch (error) {
+    console.error('Send chat message error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get chat messages for current user
+app.get('/api/user/chat/messages', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const conversationId = `user_${userId}_admin`;
+
+    const messages = await ChatMessage.find({ conversationId })
+      .sort({ createdAt: 1 })
+      .populate('senderId', 'username email')
+      .lean();
+
+    // Mark messages from admin as read when user views them
+    await ChatMessage.updateMany(
+      { conversationId, senderType: 'admin', isRead: false },
+      { isRead: true, readAt: new Date() }
+    );
+
+    // Transform messages for frontend
+    const transformedMessages = messages.map(msg => ({
+      _id: msg._id,
+      senderId: msg.senderId._id || msg.senderId,
+      message: msg.message,
+      timestamp: msg.createdAt,
+      isFromUser: msg.senderType === 'user',
+      messageType: msg.messageType,
+      mediaUrl: msg.mediaUrl,
+      mediaName: msg.mediaName,
+      mediaSize: msg.mediaSize,
+      isRead: msg.isRead
+    }));
+
+    res.json({ messages: transformedMessages });
+  } catch (error) {
+    console.error('Get user chat messages error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Send message from user to admin
+app.post('/api/user/chat/send', authenticateToken, async (req, res) => {
+  try {
+    const { message } = req.body;
+    const userId = req.user.userId;
+
+    if (!message) {
+      return res.status(400).json({ message: 'Message is required' });
+    }
+
+    const conversationId = `user_${userId}_admin`;
+
+    const chatMessage = new ChatMessage({
+      conversationId,
+      senderId: userId,
+      senderType: 'user',
+      message: message.trim(),
+      messageType: 'text'
+    });
+
+    await chatMessage.save();
+
+    // Populate sender info
+    await chatMessage.populate('senderId', 'username email');
+
+    const transformedMessage = {
+      _id: chatMessage._id,
+      senderId: chatMessage.senderId._id || chatMessage.senderId,
+      message: chatMessage.message,
+      timestamp: chatMessage.createdAt,
+      isFromUser: true,
+      messageType: 'text'
+    };
+
+    res.json({
+      message: 'Message sent successfully',
+      chatMessage: transformedMessage
+    });
+  } catch (error) {
+    console.error('Send user chat message error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upload media file for chat
+app.post('/api/user/chat/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const userId = req.user.userId;
+    const conversationId = `user_${userId}_admin`;
+
+    // Determine message type based on file
+    const fileExt = path.extname(req.file.originalname).toLowerCase();
+    const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(fileExt);
+    const messageType = isImage ? 'image' : 'file';
+
+    const chatMessage = new ChatMessage({
+      conversationId,
+      senderId: userId,
+      senderType: 'user',
+      message: `${messageType === 'image' ? 'Sent an image' : 'Sent a file'}: ${req.file.originalname}`,
+      messageType,
+      mediaUrl: `/uploads/${req.file.filename}`,
+      mediaName: req.file.originalname,
+      mediaSize: req.file.size
+    });
+
+    await chatMessage.save();
+
+    // Populate sender info
+    await chatMessage.populate('senderId', 'username email');
+
+    const transformedMessage = {
+      _id: chatMessage._id,
+      senderId: chatMessage.senderId._id || chatMessage.senderId,
+      message: chatMessage.message,
+      timestamp: chatMessage.createdAt,
+      isFromUser: true,
+      messageType: chatMessage.messageType,
+      mediaUrl: chatMessage.mediaUrl,
+      mediaName: chatMessage.mediaName,
+      mediaSize: chatMessage.mediaSize
+    };
+
+    res.json({
+      message: 'File uploaded successfully',
+      chatMessage: transformedMessage
+    });
+  } catch (error) {
+    console.error('Upload file error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Upload media file for admin chat
+app.post('/api/admin/chat/upload', authenticateToken, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const { userId } = req.body;
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
+    }
+
+    const conversationId = `user_${userId}_admin`;
+
+    // Determine message type based on file
+    const fileExt = path.extname(req.file.originalname).toLowerCase();
+    const isImage = ['.jpg', '.jpeg', '.png', '.gif'].includes(fileExt);
+    const messageType = isImage ? 'image' : 'file';
+
+    const chatMessage = new ChatMessage({
+      conversationId,
+      senderId: req.user.userId,
+      senderType: 'admin',
+      message: `${messageType === 'image' ? 'Sent an image' : 'Sent a file'}: ${req.file.originalname}`,
+      messageType,
+      mediaUrl: `/uploads/${req.file.filename}`,
+      mediaName: req.file.originalname,
+      mediaSize: req.file.size
+    });
+
+    await chatMessage.save();
+
+    // Populate sender info
+    await chatMessage.populate('senderId', 'username email');
+
+    const transformedMessage = {
+      _id: chatMessage._id,
+      senderId: chatMessage.senderId._id || chatMessage.senderId,
+      message: chatMessage.message,
+      timestamp: chatMessage.createdAt,
+      isFromUser: false,
+      messageType: chatMessage.messageType,
+      mediaUrl: chatMessage.mediaUrl,
+      mediaName: chatMessage.mediaName,
+      mediaSize: chatMessage.mediaSize
+    };
+
+    res.json({
+      message: 'File uploaded successfully',
+      chatMessage: transformedMessage
+    });
+  } catch (error) {
+    console.error('Upload file error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// -----------------------
 // Voucher Routes
 // -----------------------
 
@@ -2621,6 +3107,51 @@ app.get('/api/admin/vouchers', authenticateToken, async (req, res) => {
     res.json({ vouchers });
   } catch (error) {
     console.error('Get vouchers error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get unread message counts for admin
+app.get('/api/admin/chat/unread-counts', authenticateToken, async (req, res) => {
+  try {
+    // Get all users
+    const users = await User.find({}, '_id username email');
+
+    const unreadCounts = {};
+
+    // For each user, count unread messages from them to admin
+    for (const user of users) {
+      const conversationId = `user_${user._id}_admin`;
+      const unreadCount = await ChatMessage.countDocuments({
+        conversationId,
+        senderType: 'user',
+        isRead: false
+      });
+      unreadCounts[user._id] = unreadCount;
+    }
+
+    res.json({ unreadCounts });
+  } catch (error) {
+    console.error('Get unread counts error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Get unread message count for user
+app.get('/api/user/chat/unread-count', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const conversationId = `user_${userId}_admin`;
+
+    const unreadCount = await ChatMessage.countDocuments({
+      conversationId,
+      senderType: 'admin',
+      isRead: false
+    });
+
+    res.json({ unreadCount });
+  } catch (error) {
+    console.error('Get user unread count error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -2802,6 +3333,28 @@ app.get('/api/user/vouchers', authenticateToken, async (req, res) => {
   }
 });
 
+// Get game players data (recent active users with their balances)
+app.get('/api/game/players', async (req, res) => {
+  try {
+    // Get recent users (last 50 active users, sorted by last login or creation)
+    const players = await User.find({})
+      .select('username balance')
+      .sort({ updatedAt: -1 })
+      .limit(6); // Limit to 6 players like in the frontend
+
+    // Transform data to match frontend format
+    const playerData = players.map(user => ({
+      name: user.username,
+      bet: Math.floor(user.balance * 0.1) // Use 10% of balance as bet amount for demo
+    }));
+
+    res.json({ players: playerData });
+  } catch (error) {
+    console.error('Get game players error:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // -----------------------
 // Static Files & Server Start
 // -----------------------
@@ -2820,7 +3373,81 @@ app.get('*', (req, res) => {
   }
 });
 
-app.listen(PORT, async () => {
+// Socket.IO connection handling
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  // Join user-specific room for chat
+  socket.on('join_chat', (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`User ${userId} joined chat room`);
+  });
+
+  // Join admin room
+  socket.on('join_admin', () => {
+    socket.join('admin_room');
+    console.log('Admin joined admin room');
+  });
+
+  // Handle chat messages
+  socket.on('send_message', async (data) => {
+    try {
+      const { userId, message, senderType, token } = data;
+
+      // Verify token for security
+      if (token) {
+        jwt.verify(token, process.env.JWT_SECRET, async (err, decoded) => {
+          if (err) {
+            socket.emit('error', { message: 'Invalid token' });
+            return;
+          }
+
+          const conversationId = `user_${userId}_admin`;
+
+          const chatMessage = new ChatMessage({
+            conversationId,
+            senderId: decoded.userId,
+            senderType,
+            message: message.trim(),
+            messageType: 'text'
+          });
+
+          await chatMessage.save();
+
+          const populatedMessage = await ChatMessage.findById(chatMessage._id)
+            .populate('senderId', 'username email')
+            .lean();
+
+          const transformedMessage = {
+            _id: populatedMessage._id,
+            senderId: populatedMessage.senderId._id || populatedMessage.senderId,
+            message: populatedMessage.message,
+            timestamp: populatedMessage.createdAt,
+            isFromUser: populatedMessage.senderType === 'user',
+            messageType: populatedMessage.messageType,
+            mediaUrl: populatedMessage.mediaUrl,
+            mediaName: populatedMessage.mediaName,
+            mediaSize: populatedMessage.mediaSize
+          };
+
+          // Send to both user and admin rooms
+          io.to(`user_${userId}`).emit('receive_message', transformedMessage);
+          io.to('admin_room').emit('receive_message', transformedMessage);
+
+        });
+      }
+    } catch (error) {
+      console.error('Socket message error:', error);
+      socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+server.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
   await initializeProducts();
 });

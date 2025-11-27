@@ -51,6 +51,12 @@ const AdminSidebar = ({ activePage, setActivePage, collapsed, isMobile, sidebarO
       path: 'admin-deposits'
     },
     {
+      id: 'admin-communication',
+      label: 'Communication',
+      icon: 'fas fa-comments',
+      path: 'admin-communication'
+    },
+    {
       id: 'admin-settings',
       label: 'Settings',
       icon: 'fas fa-cog',

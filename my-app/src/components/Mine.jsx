@@ -235,7 +235,7 @@ const Mine = () => {
       const token = localStorage.getItem('token');
       if (!token) throw new Error('No authentication token found');
 
-      const apiUrl = import.meta.env.VITE_API_URL || 'https://shophub-w7f4.onrender.com';
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       console.log('Using API URL:', apiUrl);
       console.log('Making request to:', `${apiUrl}/api/user/setup-withdrawal`);
 
@@ -315,29 +315,93 @@ const Mine = () => {
       <div className="container">
        
          {/* Action Buttons */}
-        <div style={{ marginTop: '50px', display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
-          <button className="btn" onClick={() => {
-            if (!withdrawInfo) {
-              setShowWithdrawSetup(true);
-            } else {
-              setShowWithdrawModal(true);
-            }
-          }}>Withdraw</button>
-          {!withdrawInfo && (
-            <button className="btn btn-secondary" onClick={() => setShowWithdrawSetup(true)}>
-              Set Withdrawal Credentials
-            </button>
-          )}
-          {withdrawInfo && (
-            <button className="btn btn-outline" onClick={() => setShowWithdrawSetup(true)}>
-              Update Withdrawal Credentials
-            </button>
-          )}
-          <button className="btn" onClick={() => fetchWithdrawHistory()}>Withdraw History</button>
-          <button className="btn" onClick={() => setShowDepositModal(true)}>Deposit</button>
-          <button className="btn" onClick={() => setShowDepositHistoryModal(true)}>Deposit History</button>
-          <button className="btn" onClick={() => setShowVouchersModal(true)}>My Vouchers ({userVouchers.length})</button>
-        </div>
+         <div className="action-buttons">
+           <div className="action-button-card withdraw" onClick={() => {
+             if (!withdrawInfo) {
+               setShowWithdrawSetup(true);
+             } else {
+               setShowWithdrawModal(true);
+             }
+           }}>
+             <div className="action-button-content">
+               <div className="action-button-icon">
+                 <i className="fas fa-money-bill-wave"></i>
+               </div>
+               <div className="action-button-info">
+                 <h4>Withdraw Funds</h4>
+                 <p>Transfer money to your wallet</p>
+               </div>
+             </div>
+             <div className="action-button-badge">Available: ${balance.toFixed(2)}</div>
+           </div>
+
+           {!withdrawInfo && (
+             <div className="action-button-card setup" onClick={() => setShowWithdrawSetup(true)}>
+               <div className="action-button-content">
+                 <div className="action-button-icon">
+                   <i className="fas fa-cog"></i>
+                 </div>
+                 <div className="action-button-info">
+                   <h4>Set Withdrawal Credentials</h4>
+                   <p>Configure your payment methods</p>
+                 </div>
+               </div>
+               <div className="action-button-badge">Required</div>
+             </div>
+           )}
+
+           {withdrawInfo && (
+             <div className="action-button-card update" onClick={() => setShowWithdrawSetup(true)}>
+               <div className="action-button-content">
+                 <div className="action-button-icon">
+                   <i className="fas fa-edit"></i>
+                 </div>
+                 <div className="action-button-info">
+                   <h4>Update Withdrawal Credentials</h4>
+                   <p>Modify your payment settings</p>
+                 </div>
+               </div>
+               <div className="action-button-badge">Active</div>
+             </div>
+           )}
+
+           <div className="action-button-card history" onClick={() => fetchWithdrawHistory()}>
+             <div className="action-button-content">
+               <div className="action-button-icon">
+                 <i className="fas fa-history"></i>
+               </div>
+               <div className="action-button-info">
+                 <h4>Withdraw History</h4>
+                 <p>View your transaction records</p>
+               </div>
+             </div>
+           </div>
+
+           <div className="action-button-card deposit" onClick={() => setShowDepositModal(true)}>
+             <div className="action-button-content">
+               <div className="action-button-icon">
+                 <i className="fas fa-plus-circle"></i>
+               </div>
+               <div className="action-button-info">
+                 <h4>Deposit Funds</h4>
+                 <p>Add money to your account</p>
+               </div>
+             </div>
+           </div>
+
+           <div className="action-button-card vouchers" onClick={() => setShowVouchersModal(true)}>
+             <div className="action-button-content">
+               <div className="action-button-icon">
+                 <i className="fas fa-ticket-alt"></i>
+               </div>
+               <div className="action-button-info">
+                 <h4>My Vouchers</h4>
+                 <p>Manage your reward vouchers</p>
+               </div>
+             </div>
+             <div className="action-button-badge">{userVouchers.length} Active</div>
+           </div>
+         </div>
         
        
 
